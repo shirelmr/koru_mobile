@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../core/strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/widgets/koru_button.dart';
@@ -75,10 +76,11 @@ class ReportConfigureScreen extends ConsumerWidget {
     final entries = ref.watch(appProvider).entries;
     final isdia = ref.watch(appProvider).profile == UserProfile.diabetes;
     final periodEntries = _entriesForPeriod(entries, config.period);
+    final s = ref.watch(stringsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Generate Report'),
+        title: Text(s.generateReport),
         leading: BackButton(onPressed: () => context.pop()),
       ),
       body: SafeArea(
@@ -86,13 +88,9 @@ class ReportConfigureScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           children: [
             const SizedBox(height: 8),
-            const Text(
-              'To bring to your doctor',
-              style: KoruTextStyles.bodyMuted,
-            ),
+            Text(s.reportSubtitle, style: KoruTextStyles.bodyMuted),
             const SizedBox(height: 24),
-            // Period selector
-            Text('PERIOD'.toUpperCase(), style: KoruTextStyles.label),
+            Text(s.period, style: KoruTextStyles.label),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -115,7 +113,7 @@ class ReportConfigureScreen extends ConsumerWidget {
                       ),
                     ),
                     child: Text(
-                      _periodLabel(p),
+                      _periodLabel(p, s),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -127,123 +125,50 @@ class ReportConfigureScreen extends ConsumerWidget {
               }).toList(),
             ),
             const SizedBox(height: 8),
-            Text(
-              _periodSubtitle(entries, config.period),
-              style: KoruTextStyles.bodyMuted,
-            ),
+            Text(_periodSubtitle(entries, config.period, s), style: KoruTextStyles.bodyMuted),
             const SizedBox(height: 24),
-            // What to include
-            Text('INCLUDE'.toUpperCase(), style: KoruTextStyles.label),
+            Text(s.includeLabel, style: KoruTextStyles.label),
             const SizedBox(height: 10),
             Container(
-              decoration: BoxDecoration(
-                color: KoruColors.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: KoruColors.border, width: 0.5),
-              ),
+              decoration: BoxDecoration(color: KoruColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: KoruColors.border, width: 0.5)),
               child: Column(
                 children: [
                   if (isdia) ...[
-                    _ToggleRow(
-                      emoji: '🩸',
-                      label: 'Detailed daily glucose',
-                      value: config.includeGlucose,
-                      onChanged: (v) =>
-                          notifier.state = config.copyWith(includeGlucose: v),
-                    ),
-                    _ToggleRow(
-                      emoji: '💉',
-                      label: 'Insulin per day',
-                      value: config.includeInsulin,
-                      onChanged: (v) =>
-                          notifier.state = config.copyWith(includeInsulin: v),
-                    ),
-                    _ToggleRow(
-                      emoji: '🍽',
-                      label: 'Foods consumed (day by day)',
-                      value: config.includeFoods,
-                      onChanged: (v) =>
-                          notifier.state = config.copyWith(includeFoods: v),
-                    ),
+                    _ToggleRow(emoji: '🩸', label: s.includeGlucose, value: config.includeGlucose, onChanged: (v) => notifier.state = config.copyWith(includeGlucose: v)),
+                    _ToggleRow(emoji: '💉', label: s.includeInsulin, value: config.includeInsulin, onChanged: (v) => notifier.state = config.copyWith(includeInsulin: v)),
+                    _ToggleRow(emoji: '🍽', label: s.includeFoods, value: config.includeFoods, onChanged: (v) => notifier.state = config.copyWith(includeFoods: v)),
                   ],
-                  _ToggleRow(
-                    emoji: '😴',
-                    label: 'Sleep hours per night',
-                    value: config.includeSleep,
-                    onChanged: (v) =>
-                        notifier.state = config.copyWith(includeSleep: v),
-                  ),
-                  _ToggleRow(
-                    emoji: '🤕',
-                    label: 'Reported symptoms',
-                    value: config.includeSymptoms,
-                    onChanged: (v) =>
-                        notifier.state = config.copyWith(includeSymptoms: v),
-                  ),
-                  _ToggleRow(
-                    emoji: '🔗',
-                    label: 'Detected correlations',
-                    value: config.includeCorrelations,
-                    onChanged: (v) => notifier.state =
-                        config.copyWith(includeCorrelations: v),
-                  ),
-                  _ToggleRow(
-                    emoji: '📝',
-                    label: 'Patient notes (optional)',
-                    value: config.includeNotes,
-                    onChanged: (v) =>
-                        notifier.state = config.copyWith(includeNotes: v),
-                    last: true,
-                  ),
+                  _ToggleRow(emoji: '😴', label: s.includeSleep, value: config.includeSleep, onChanged: (v) => notifier.state = config.copyWith(includeSleep: v)),
+                  _ToggleRow(emoji: '🤕', label: s.includeSymptoms, value: config.includeSymptoms, onChanged: (v) => notifier.state = config.copyWith(includeSymptoms: v)),
+                  _ToggleRow(emoji: '🔗', label: s.includeCorrelations, value: config.includeCorrelations, onChanged: (v) => notifier.state = config.copyWith(includeCorrelations: v)),
+                  _ToggleRow(emoji: '📝', label: s.includeNotes, value: config.includeNotes, onChanged: (v) => notifier.state = config.copyWith(includeNotes: v), last: true),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Detail level
-            Text('DETAIL LEVEL'.toUpperCase(), style: KoruTextStyles.label),
+            Text(s.detailLevel, style: KoruTextStyles.label),
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(
-                  child: _SelectTile(
-                    label: 'Summary only',
-                    selected: !config.dayByDay,
-                    onTap: () =>
-                        notifier.state = config.copyWith(dayByDay: false),
-                  ),
-                ),
+                Expanded(child: _SelectTile(label: s.summaryOnly, selected: !config.dayByDay, onTap: () => notifier.state = config.copyWith(dayByDay: false))),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _SelectTile(
-                    label: 'Day by day ✓',
-                    selected: config.dayByDay,
-                    onTap: () =>
-                        notifier.state = config.copyWith(dayByDay: true),
-                  ),
-                ),
+                Expanded(child: _SelectTile(label: s.dayByDay, selected: config.dayByDay, onTap: () => notifier.state = config.copyWith(dayByDay: true))),
               ],
             ),
             const SizedBox(height: 24),
-            // Doctor note
-            Text("DOCTOR'S NOTE (OPTIONAL)".toUpperCase(),
-                style: KoruTextStyles.label),
+            Text(s.doctorNoteLabel, style: KoruTextStyles.label),
             const SizedBox(height: 10),
             TextField(
               minLines: 3,
               maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: 'Add a note for your doctor...',
-              ),
-              onChanged: (v) =>
-                  notifier.state = config.copyWith(doctorNote: v),
+              decoration: InputDecoration(hintText: s.doctorNoteHint),
+              onChanged: (v) => notifier.state = config.copyWith(doctorNote: v),
             ),
             const SizedBox(height: 32),
             KoruButton(
-              label: 'View Report',
+              label: s.viewReport,
               icon: Icons.arrow_forward,
-              onPressed: periodEntries.isEmpty
-                  ? null
-                  : () => context.go('/patterns/report/preview'),
+              onPressed: periodEntries.isEmpty ? null : () => context.go('/patterns/report/preview'),
             ),
             const SizedBox(height: 32),
           ],
@@ -252,16 +177,16 @@ class ReportConfigureScreen extends ConsumerWidget {
     );
   }
 
-  String _periodLabel(ReportPeriod p) => switch (p) {
-        ReportPeriod.week7 => '7 days',
-        ReportPeriod.days30 => '30 days',
-        ReportPeriod.days90 => '90 days',
-        ReportPeriod.custom => 'Custom',
+  String _periodLabel(ReportPeriod p, S s) => switch (p) {
+        ReportPeriod.week7 => s.period7d,
+        ReportPeriod.days30 => s.period30d,
+        ReportPeriod.days90 => s.period90d,
+        ReportPeriod.custom => s.periodCustom,
       };
 
-  String _periodSubtitle(List<CheckInEntry> entries, ReportPeriod p) {
+  String _periodSubtitle(List<CheckInEntry> entries, ReportPeriod p, S s) {
     final filtered = _entriesForPeriod(entries, p);
-    if (filtered.isEmpty) return 'No entries found';
+    if (filtered.isEmpty) return s.noEntriesFound;
     final start = filtered.last.date;
     final end = filtered.first.date;
     final fmt = DateFormat('MMM d');

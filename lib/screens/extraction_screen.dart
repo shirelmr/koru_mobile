@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/strings.dart';
 import '../core/theme/colors.dart';
 import '../core/theme/text_styles.dart';
 import '../core/widgets/koru_button.dart';
@@ -20,53 +21,61 @@ class _ExtractionScreenState extends ConsumerState<ExtractionScreen> {
   @override
   void initState() {
     super.initState();
-    final state = ref.read(appProvider);
-    final ex = state.pendingExtraction;
-    _chips = ex?.toChipMap(state.profile) ??
-        {
-          '😵 Symptoms': [],
-          '😴 Sleep': [],
-          '🍽 Intake': [],
-          '😤 Stress': [],
-          '🏃 Exercise': [],
-          '😊 Mood': [],
-        };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final s = ref.read(stringsProvider);
+      final state = ref.read(appProvider);
+      final ex = state.pendingExtraction;
+      setState(() {
+        _chips = ex?.toChipMap(
+              state.profile,
+              catSymptoms: s.catSymptoms,
+              catSleep: s.catSleep,
+              catIntake: s.catIntake,
+              catStress: s.catStress,
+              catExercise: s.catExercise,
+              catMood: s.catMood,
+              catGlucose: s.catGlucose,
+              catInsulin: s.catInsulin,
+              catCarbs: s.catCarbs,
+              catLastMeal: s.catLastMeal,
+            ) ??
+            {
+              s.catSymptoms: [],
+              s.catSleep: [],
+              s.catIntake: [],
+              s.catStress: [],
+              s.catExercise: [],
+              s.catMood: [],
+            };
+      });
+    });
   }
 
   void _removeChip(String category, String chip) {
-    setState(() {
-      _chips[category]?.remove(chip);
-    });
+    setState(() => _chips[category]?.remove(chip));
   }
 
   void _addChip(String category) async {
     final controller = TextEditingController();
+    final s = ref.read(stringsProvider);
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Add to $category'),
+        title: Text(s.addToCategory(category)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Enter tag...'),
+          decoration: InputDecoration(hintText: s.addTagHint),
           onSubmitted: (v) => Navigator.pop(ctx, v),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
-            child: const Text('Add'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s.cancel)),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text), child: Text(s.add)),
         ],
       ),
     );
     if (result != null && result.trim().isNotEmpty) {
-      setState(() {
-        _chips[category]?.add(result.trim());
-      });
+      setState(() => _chips[category]?.add(result.trim()));
     }
   }
 
@@ -77,6 +86,12 @@ class _ExtractionScreenState extends ConsumerState<ExtractionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = ref.watch(stringsProvider);
+
+    if (_chips.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -89,33 +104,16 @@ class _ExtractionScreenState extends ConsumerState<ExtractionScreen> {
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         const SizedBox(height: 20),
-                        // Header
                         Row(
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: KoruColors.success,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                            Container(width: 8, height: 8, decoration: const BoxDecoration(color: KoruColors.success, shape: BoxShape.circle)),
                             const SizedBox(width: 8),
-                            Text(
-                              'ANALYSIS COMPLETE',
-                              style: KoruTextStyles.label.copyWith(
-                                color: KoruColors.success,
-                              ),
-                            ),
+                            Text(s.analysisComplete, style: KoruTextStyles.label.copyWith(color: KoruColors.success)),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Here's what I found",
-                          style: KoruTextStyles.headline,
-                        ),
+                        Text(s.hereIsWhatIFound, style: KoruTextStyles.headline),
                         const SizedBox(height: 24),
-                        // Chip grid
                         ..._buildChipGrid(),
                         const SizedBox(height: 32),
                       ]),
@@ -124,23 +122,15 @@ class _ExtractionScreenState extends ConsumerState<ExtractionScreen> {
                 ],
               ),
             ),
-            // Bottom actions
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
               child: Column(
                 children: [
-                  KoruButton(
-                    label: 'Confirm & Save',
-                    icon: Icons.check,
-                    onPressed: _confirm,
-                  ),
+                  KoruButton(label: s.confirmAndSave, icon: Icons.check, onPressed: _confirm),
                   const SizedBox(height: 10),
                   TextButton(
                     onPressed: () => context.pop(),
-                    child: const Text(
-                      'Edit manually',
-                      style: TextStyle(color: KoruColors.muted, fontSize: 14),
-                    ),
+                    child: Text(s.editManually, style: const TextStyle(color: KoruColors.muted, fontSize: 14)),
                   ),
                 ],
               ),
@@ -162,23 +152,9 @@ class _ExtractionScreenState extends ConsumerState<ExtractionScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: _ChipCell(
-                categoryKey: leftKey,
-                chips: _chips[leftKey] ?? [],
-                onRemove: (chip) => _removeChip(leftKey, chip),
-                onAdd: () => _addChip(leftKey),
-              )),
+              Expanded(child: _ChipCell(categoryKey: leftKey, chips: _chips[leftKey] ?? [], onRemove: (chip) => _removeChip(leftKey, chip), onAdd: () => _addChip(leftKey))),
               const SizedBox(width: 10),
-              Expanded(
-                child: rightKey != null
-                    ? _ChipCell(
-                        categoryKey: rightKey,
-                        chips: _chips[rightKey] ?? [],
-                        onRemove: (chip) => _removeChip(rightKey, chip),
-                        onAdd: () => _addChip(rightKey),
-                      )
-                    : const SizedBox(),
-              ),
+              Expanded(child: rightKey != null ? _ChipCell(categoryKey: rightKey, chips: _chips[rightKey] ?? [], onRemove: (chip) => _removeChip(rightKey, chip), onAdd: () => _addChip(rightKey)) : const SizedBox()),
             ],
           ),
         ),
@@ -195,24 +171,11 @@ class _ChipCell extends StatelessWidget {
   final ValueChanged<String> onRemove;
   final VoidCallback onAdd;
 
-  const _ChipCell({
-    required this.categoryKey,
-    required this.chips,
-    required this.onRemove,
-    required this.onAdd,
-  });
-
-  bool get _isDanger {
-    return categoryKey.contains('Symptom') || categoryKey.contains('Glucose');
-  }
-
-  bool get _isWarning {
-    return categoryKey.contains('Intake') || categoryKey.contains('Carbs');
-  }
+  const _ChipCell({required this.categoryKey, required this.chips, required this.onRemove, required this.onAdd});
 
   KoruChipVariant get _chipVariant {
-    if (_isDanger) return KoruChipVariant.danger;
-    if (_isWarning) return KoruChipVariant.warning;
+    if (categoryKey.contains('Síntom') || categoryKey.contains('Symptom') || categoryKey.contains('Gluco')) return KoruChipVariant.danger;
+    if (categoryKey.contains('Ingest') || categoryKey.contains('Intake') || categoryKey.contains('Carb')) return KoruChipVariant.warning;
     return KoruChipVariant.normal;
   }
 
@@ -220,11 +183,7 @@ class _ChipCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: KoruColors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: KoruColors.border, width: 0.5),
-      ),
+      decoration: BoxDecoration(color: KoruColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: KoruColors.border, width: 0.5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -234,27 +193,14 @@ class _ChipCell extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              ...chips.map(
-                (chip) => KoruChip(
-                  label: chip,
-                  variant: _chipVariant,
-                  onRemove: () => onRemove(chip),
-                ),
-              ),
+              ...chips.map((chip) => KoruChip(label: chip, variant: _chipVariant, onRemove: () => onRemove(chip))),
               GestureDetector(
                 onTap: onAdd,
                 child: Container(
                   width: 26,
                   height: 26,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: KoruColors.border),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    size: 16,
-                    color: KoruColors.muted,
-                  ),
+                  decoration: BoxDecoration(border: Border.all(color: KoruColors.border), shape: BoxShape.circle),
+                  child: const Icon(Icons.add, size: 16, color: KoruColors.muted),
                 ),
               ),
             ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../core/strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/widgets/koru_button.dart';
@@ -19,6 +20,7 @@ class ReportPreviewScreen extends ConsumerWidget {
     final config = ref.watch(reportConfigProvider);
     final entries = appState.entries;
     final isdia = appState.profile == UserProfile.diabetes;
+    final s = ref.watch(stringsProvider);
 
     final glucoseEntries = entries.where((e) => e.glucose != null).toList();
     final avgGlucose = glucoseEntries.isEmpty
@@ -38,17 +40,19 @@ class ReportPreviewScreen extends ConsumerWidget {
         allSymptoms[s] = (allSymptoms[s] ?? 0) + 1;
       }
     }
-    final topFoods = <String>{'Coffee ×3+', 'Skipped meal', 'Water', 'Alcohol'};
+    final topFoods = s.isSpanish
+        ? <String>{'Café ×3+', 'Comida saltada', 'Agua', 'Alcohol'}
+        : <String>{'Coffee ×3+', 'Skipped meal', 'Water', 'Alcohol'};
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Report Preview'),
+        title: Text(s.reportPreview),
         leading: BackButton(onPressed: () => context.pop()),
         actions: [
           TextButton.icon(
             onPressed: () => context.go('/patterns/report/preview/export'),
             icon: const Icon(Icons.share_outlined, size: 18),
-            label: const Text('Export'),
+            label: Text(s.export),
             style: TextButton.styleFrom(foregroundColor: KoruColors.mid),
           ),
         ],
@@ -103,11 +107,8 @@ class ReportPreviewScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${entries.length} entries',
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                  ),
+                  '${entries.length} ${s.daysLabel}',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
                 ),
               ],
             ),
@@ -119,81 +120,53 @@ class ReportPreviewScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isdia && avgGlucose != null) ...[
-                  _SectionHeader('Glucose Summary'),
+                  _SectionHeader(s.glucoseSummary),
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: KoruColors.card,
-                      borderRadius: BorderRadius.circular(14),
-                      border:
-                          Border.all(color: KoruColors.border, width: 0.5),
-                    ),
+                    decoration: BoxDecoration(color: KoruColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: KoruColors.border, width: 0.5)),
                     child: Column(
                       children: [
                         Row(
                           children: [
-                            _StatPill(
-                              label: 'Avg Glucose',
-                              value: '${avgGlucose.toStringAsFixed(0)} mg/dL',
-                              highlight: avgGlucose > 140,
-                            ),
+                            _StatPill(label: s.avgGlucose, value: '${avgGlucose.toStringAsFixed(0)} mg/dL', highlight: avgGlucose > 140),
                             const SizedBox(width: 10),
-                            _StatPill(
-                              label: 'Spikes >140',
-                              value: '$highSpikes days',
-                              highlight: highSpikes > 3,
-                            ),
+                            _StatPill(label: s.spikesLabel, value: '$highSpikes ${s.daysLabel}', highlight: highSpikes > 3),
                             const SizedBox(width: 10),
-                            _StatPill(
-                              label: 'Insulin taken',
-                              value: '$insulinPct%',
-                            ),
+                            _StatPill(label: s.insulinTakenLabel, value: '$insulinPct%'),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _GlucoseBar(entries: entries),
+                        _GlucoseBar(entries: entries, s: s),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
                 ],
-                _SectionHeader('Foods & Intake'),
+                _SectionHeader(s.foodsIntake),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: topFoods
-                      .map((f) => KoruChip(
-                            label: f,
-                            variant: f.contains('Coffee') || f.contains('Skip')
-                                ? KoruChipVariant.warning
-                                : KoruChipVariant.normal,
-                          ))
-                      .toList(),
+                  children: topFoods.map((f) => KoruChip(label: f, variant: (f.contains('Café') || f.contains('Coffee') || f.contains('Skip') || f.contains('saltada')) ? KoruChipVariant.warning : KoruChipVariant.normal)).toList(),
                 ),
                 if (allSymptoms.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  _SectionHeader('Detected Correlations'),
+                  _SectionHeader(s.detectedCorrelations),
                   const SizedBox(height: 12),
-                  _CorrelationList(),
+                  _CorrelationList(s: s),
                 ],
                 const SizedBox(height: 24),
-                _SectionHeader('Day by Day'),
+                _SectionHeader(s.dayByDaySection),
                 const SizedBox(height: 12),
                 ...entries.take(5).map((e) => _DayRow(entry: e)),
                 if (entries.length > 5) ...[
                   const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      '+ ${entries.length - 5} more days',
-                      style: KoruTextStyles.bodyMuted,
-                    ),
-                  ),
+                  Center(child: Text(s.moreDays(entries.length - 5), style: KoruTextStyles.bodyMuted)),
                 ],
                 const SizedBox(height: 40),
                 KoruButton(
-                  label: 'Export PDF',
+                  label: s.exportPdf,
                   icon: Icons.picture_as_pdf_outlined,
                   onPressed: () =>
                       context.go('/patterns/report/preview/export'),
@@ -268,7 +241,8 @@ class _StatPill extends StatelessWidget {
 
 class _GlucoseBar extends StatelessWidget {
   final List<CheckInEntry> entries;
-  const _GlucoseBar({required this.entries});
+  final S s;
+  const _GlucoseBar({required this.entries, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -319,23 +293,21 @@ class _GlucoseBar extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 8),
-        Text(
-          '$rangePct% days in range (70–140 mg/dL)',
-          style: KoruTextStyles.bodyMuted,
-        ),
+        Text(s.daysInRange(rangePct), style: KoruTextStyles.bodyMuted),
       ],
     );
   }
 }
 
 class _CorrelationList extends StatelessWidget {
+  final S s;
+  const _CorrelationList({required this.s});
+
   @override
   Widget build(BuildContext context) {
-    final items = [
-      ('Coffee ×3+', 'Headache', '82%'),
-      ('Poor Sleep', 'Low Mood', '78%'),
-      ('Exercise', 'Good Mood', '91%'),
-    ];
+    final items = s.isSpanish
+        ? [('Café ×3+', 'Dolor de cabeza', '82%'), ('Mal sueño', 'Bajo ánimo', '78%'), ('Ejercicio', 'Buen ánimo', '91%')]
+        : [('Coffee ×3+', 'Headache', '82%'), ('Poor Sleep', 'Low Mood', '78%'), ('Exercise', 'Good Mood', '91%')];
     return Column(
       children: items.map((item) {
         return Padding(

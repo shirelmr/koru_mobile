@@ -167,20 +167,32 @@ class ExtractedData {
     this.lastMeal,
   });
 
-  Map<String, List<String>> toChipMap(UserProfile profile) {
+  Map<String, List<String>> toChipMap(
+    UserProfile profile, {
+    String catSymptoms = '😵 Symptoms',
+    String catSleep = '😴 Sleep',
+    String catIntake = '🍽 Intake',
+    String catStress = '😤 Stress',
+    String catExercise = '🏃 Exercise',
+    String catMood = '😊 Mood',
+    String catGlucose = '🩸 Glucose',
+    String catInsulin = '💉 Insulin',
+    String catCarbs = '🥗 Carbs',
+    String catLastMeal = '🍴 Last Meal',
+  }) {
     final map = <String, List<String>>{
-      '😵 Symptoms': List.from(symptoms),
-      '😴 Sleep': List.from(sleep),
-      '🍽 Intake': List.from(intake),
-      '😤 Stress': List.from(stress),
-      '🏃 Exercise': List.from(exercise),
-      '😊 Mood': List.from(mood),
+      catSymptoms: List.from(symptoms),
+      catSleep: List.from(sleep),
+      catIntake: List.from(intake),
+      catStress: List.from(stress),
+      catExercise: List.from(exercise),
+      catMood: List.from(mood),
     };
     if (profile == UserProfile.diabetes) {
-      if (glucose != null) map['🩸 Glucose'] = [glucose!];
-      if (insulin != null) map['💉 Insulin'] = [insulin!];
-      if (carbs != null) map['🥗 Carbs'] = [carbs!];
-      if (lastMeal != null) map['🍴 Last Meal'] = [lastMeal!];
+      if (glucose != null) map[catGlucose] = [glucose!];
+      if (insulin != null) map[catInsulin] = [insulin!];
+      if (carbs != null) map[catCarbs] = [carbs!];
+      if (lastMeal != null) map[catLastMeal] = [lastMeal!];
     }
     return map;
   }

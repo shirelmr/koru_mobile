@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/strings.dart';
 import '../core/theme/colors.dart';
 import '../core/theme/text_styles.dart';
 import '../core/widgets/stat_card.dart';
@@ -16,9 +17,10 @@ class PatternsScreen extends ConsumerWidget {
     final state = ref.watch(appProvider);
     final entries = state.entries;
     final isdia = state.profile == UserProfile.diabetes;
+    final s = ref.watch(stringsProvider);
 
     if (entries.length < 7) {
-      return _LockedView(count: entries.length);
+      return _LockedView(count: entries.length, s: s);
     }
 
     return Scaffold(
@@ -32,45 +34,34 @@ class PatternsScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Expanded(
-                        child: Text(
-                          'Your Patterns',
-                          style: KoruTextStyles.headline,
-                        ),
-                      ),
+                      Expanded(child: Text(s.yourPatterns, style: KoruTextStyles.headline)),
                       TextButton(
                         onPressed: () => context.go('/patterns/report'),
-                        child: const Text(
-                          '📋 Report',
-                          style: TextStyle(color: KoruColors.mid),
-                        ),
+                        child: Text(s.reportBtn, style: const TextStyle(color: KoruColors.mid)),
                       ),
                     ],
                   ),
-                  Text(
-                    'Based on ${entries.length} entries',
-                    style: KoruTextStyles.bodyMuted,
-                  ),
+                  Text(s.basedOnEntries(entries.length), style: KoruTextStyles.bodyMuted),
                   const SizedBox(height: 20),
-                  _StatGrid(entries: entries),
+                  _StatGrid(entries: entries, s: s),
                   const SizedBox(height: 24),
-                  _SectionLabel('Mood Distribution'),
+                  _SectionLabel(s.moodDistribution),
                   const SizedBox(height: 12),
-                  _MoodDistributionBar(entries: entries),
+                  _MoodDistributionBar(entries: entries, s: s),
                   if (isdia) ...[
                     const SizedBox(height: 24),
-                    _SectionLabel('Glucose Over Time'),
+                    _SectionLabel(s.glucoseOverTime),
                     const SizedBox(height: 12),
-                    _GlucoseChart(entries: entries),
+                    _GlucoseChart(entries: entries, s: s),
                   ],
                   const SizedBox(height: 24),
-                  _SectionLabel('Most Frequent Symptoms'),
+                  _SectionLabel(s.mostFrequentSymptoms),
                   const SizedBox(height: 12),
-                  _SymptomList(entries: entries),
+                  _SymptomList(entries: entries, s: s),
                   const SizedBox(height: 24),
-                  _SectionLabel('Correlations'),
+                  _SectionLabel(s.correlations),
                   const SizedBox(height: 12),
-                  ..._mockCorrelations.map(
+                  ..._buildCorrelations(s).map(
                     (c) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _CorrelationCard(card: c),
@@ -85,46 +76,22 @@ class PatternsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  List<_CorrelationData> _buildCorrelations(S s) => [
+        _CorrelationData(conditionA: s.isSpanish ? 'Café ×3+' : 'Coffee ×3+', conditionB: s.isSpanish ? 'Dolor de cabeza' : 'Headache', badge: s.badgeHigh, timesOut: 3, timesTotal: 4, correlation: 0.82, color: KoruColors.danger),
+        _CorrelationData(conditionA: s.isSpanish ? 'Mal sueño' : 'Poor Sleep', conditionB: s.isSpanish ? 'Bajo ánimo' : 'Low Mood', badge: s.badgeHigh, timesOut: 4, timesTotal: 5, correlation: 0.78, color: KoruColors.danger),
+        _CorrelationData(conditionA: s.isSpanish ? 'Ejercicio' : 'Exercise', conditionB: s.isSpanish ? 'Buen ánimo' : 'Good Mood', badge: s.badgePositive, timesOut: 3, timesTotal: 3, correlation: 0.91, color: KoruColors.success),
+        _CorrelationData(conditionA: s.isSpanish ? 'Estrés alto' : 'High Stress', conditionB: s.isSpanish ? 'Problemas de sueño' : 'Sleep Issues', badge: s.badgeMedium, timesOut: 2, timesTotal: 4, correlation: 0.55, color: KoruColors.neutralMood),
+      ];
 }
 
-final _mockCorrelations = [
-  (
-    conditionA: 'Coffee ×3+',
-    conditionB: 'Headache',
-    badge: 'HIGH',
-    timesOut: 3,
-    timesTotal: 4,
-    correlation: 0.82,
-    color: KoruColors.danger,
-  ),
-  (
-    conditionA: 'Poor Sleep',
-    conditionB: 'Low Mood',
-    badge: 'HIGH',
-    timesOut: 4,
-    timesTotal: 5,
-    correlation: 0.78,
-    color: KoruColors.danger,
-  ),
-  (
-    conditionA: 'Exercise',
-    conditionB: 'Good Mood',
-    badge: 'POSITIVE',
-    timesOut: 3,
-    timesTotal: 3,
-    correlation: 0.91,
-    color: KoruColors.success,
-  ),
-  (
-    conditionA: 'High Stress',
-    conditionB: 'Sleep Issues',
-    badge: 'MEDIUM',
-    timesOut: 2,
-    timesTotal: 4,
-    correlation: 0.55,
-    color: KoruColors.neutralMood,
-  ),
-];
+class _CorrelationData {
+  final String conditionA, conditionB, badge;
+  final int timesOut, timesTotal;
+  final double correlation;
+  final Color color;
+  const _CorrelationData({required this.conditionA, required this.conditionB, required this.badge, required this.timesOut, required this.timesTotal, required this.correlation, required this.color});
+}
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -138,7 +105,8 @@ class _SectionLabel extends StatelessWidget {
 
 class _StatGrid extends StatelessWidget {
   final List<CheckInEntry> entries;
-  const _StatGrid({required this.entries});
+  final S s;
+  const _StatGrid({required this.entries, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -168,26 +136,10 @@ class _StatGrid extends StatelessWidget {
       mainAxisSpacing: 10,
       childAspectRatio: 1.3,
       children: [
-        StatCard(
-          emoji: '📅',
-          value: '${entries.length}',
-          label: 'Total Entries',
-        ),
-        StatCard(
-          emoji: '😴',
-          value: avgSleepStr,
-          label: 'Avg Sleep',
-        ),
-        StatCard(
-          emoji: '🏃',
-          value: exercisePct,
-          label: 'Exercise Days',
-        ),
-        StatCard(
-          emoji: '😊',
-          value: goodPct,
-          label: 'Good Days',
-        ),
+        StatCard(emoji: '📅', value: '${entries.length}', label: s.statTotalEntries),
+        StatCard(emoji: '😴', value: avgSleepStr, label: s.statAvgSleep),
+        StatCard(emoji: '🏃', value: exercisePct, label: s.statExerciseDays),
+        StatCard(emoji: '😊', value: goodPct, label: s.statGoodDays),
       ],
     );
   }
@@ -195,7 +147,8 @@ class _StatGrid extends StatelessWidget {
 
 class _MoodDistributionBar extends StatelessWidget {
   final List<CheckInEntry> entries;
-  const _MoodDistributionBar({required this.entries});
+  final S s;
+  const _MoodDistributionBar({required this.entries, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -243,11 +196,11 @@ class _MoodDistributionBar extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              _Legend(color: KoruColors.success, label: 'Good ${(goodPct * 100).round()}%'),
+              _Legend(color: KoruColors.success, label: '${s.moodGood} ${(goodPct * 100).round()}%'),
               const SizedBox(width: 16),
-              _Legend(color: KoruColors.neutralMood, label: 'Neutral ${(neutralPct * 100).round()}%'),
+              _Legend(color: KoruColors.neutralMood, label: '${s.moodNeutral} ${(neutralPct * 100).round()}%'),
               const SizedBox(width: 16),
-              _Legend(color: KoruColors.danger, label: 'Bad ${(badPct * 100).round()}%'),
+              _Legend(color: KoruColors.danger, label: '${s.moodBad} ${(badPct * 100).round()}%'),
             ],
           ),
         ],
@@ -279,7 +232,8 @@ class _Legend extends StatelessWidget {
 
 class _GlucoseChart extends StatelessWidget {
   final List<CheckInEntry> entries;
-  const _GlucoseChart({required this.entries});
+  final S s;
+  const _GlucoseChart({required this.entries, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +273,7 @@ class _GlucoseChart extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Avg ${avg.toStringAsFixed(0)} mg/dL',
+                  s.avgGlucoseLabel(avg.toStringAsFixed(0)),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -391,7 +345,8 @@ class _GlucoseChart extends StatelessWidget {
 
 class _SymptomList extends StatelessWidget {
   final List<CheckInEntry> entries;
-  const _SymptomList({required this.entries});
+  final S s;
+  const _SymptomList({required this.entries, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +357,7 @@ class _SymptomList extends StatelessWidget {
       }
     }
     if (freq.isEmpty) {
-      return const Text('No symptoms recorded.', style: KoruTextStyles.bodyMuted);
+      return Text(s.noSymptomsRecorded, style: KoruTextStyles.bodyMuted);
     }
     final sorted = freq.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final maxCount = sorted.first.value;
@@ -447,21 +402,13 @@ class _SymptomList extends StatelessWidget {
   }
 }
 
-class _CorrelationCard extends StatelessWidget {
-  final ({
-    String conditionA,
-    String conditionB,
-    String badge,
-    int timesOut,
-    int timesTotal,
-    double correlation,
-    Color color,
-  }) card;
-
+class _CorrelationCard extends ConsumerWidget {
+  final _CorrelationData card;
   const _CorrelationCard({required this.card});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -474,33 +421,17 @@ class _CorrelationCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  '${card.conditionA} → ${card.conditionB}',
-                  style: KoruTextStyles.title,
-                ),
-              ),
+              Expanded(child: Text('${card.conditionA} → ${card.conditionB}', style: KoruTextStyles.title)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: card.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  card.badge,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: card.color,
-                    letterSpacing: 0.8,
-                  ),
-                ),
+                decoration: BoxDecoration(color: card.color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: Text(card.badge, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: card.color, letterSpacing: 0.8)),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            '${card.timesOut} of ${card.timesTotal} times · ${(card.correlation * 100).round()}% correlation',
+            s.correlationStat(card.timesOut, card.timesTotal, (card.correlation * 100).round()),
             style: KoruTextStyles.bodyMuted,
           ),
           const SizedBox(height: 8),
@@ -521,7 +452,8 @@ class _CorrelationCard extends StatelessWidget {
 
 class _LockedView extends StatelessWidget {
   final int count;
-  const _LockedView({required this.count});
+  final S s;
+  const _LockedView({required this.count, required this.s});
 
   @override
   Widget build(BuildContext context) {
@@ -533,20 +465,17 @@ class _LockedView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const Text('Your Patterns', style: KoruTextStyles.headline),
+              Text(s.yourPatterns, style: KoruTextStyles.headline),
               const Spacer(),
               Center(
                 child: Column(
                   children: [
                     const Text('🔍', style: TextStyle(fontSize: 48)),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Patterns unlock after 7 days',
-                      style: KoruTextStyles.title,
-                    ),
+                    Text(s.patternsUnlockAfter7, style: KoruTextStyles.title),
                     const SizedBox(height: 8),
                     Text(
-                      '$count of 7 days logged to unlock your patterns',
+                      s.daysToUnlock(count),
                       style: KoruTextStyles.bodyMuted,
                       textAlign: TextAlign.center,
                     ),

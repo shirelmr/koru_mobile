@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/strings.dart';
 import '../core/theme/colors.dart';
 
-class ShellScreen extends StatelessWidget {
+class ShellScreen extends ConsumerWidget {
   final StatefulNavigationShell shell;
 
   const ShellScreen({super.key, required this.shell});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(stringsProvider);
+
     return Scaffold(
       body: shell,
       bottomNavigationBar: Container(
@@ -23,19 +27,19 @@ class ShellScreen extends StatelessWidget {
               children: [
                 _NavItem(
                   icon: Icons.radio_button_checked_rounded,
-                  label: 'Check-In',
+                  label: s.navCheckIn,
                   selected: shell.currentIndex == 0,
                   onTap: () => shell.goBranch(0),
                 ),
                 _NavItem(
                   icon: Icons.show_chart_rounded,
-                  label: 'Timeline',
+                  label: s.navTimeline,
                   selected: shell.currentIndex == 1,
                   onTap: () => shell.goBranch(1),
                 ),
                 _NavItem(
                   icon: Icons.grid_view_rounded,
-                  label: 'Patterns',
+                  label: s.navPatterns,
                   selected: shell.currentIndex == 2,
                   onTap: () => shell.goBranch(2),
                 ),
@@ -80,8 +84,7 @@ class _NavItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 color: selected ? Colors.white : KoruColors.sage,
               ),
             ),

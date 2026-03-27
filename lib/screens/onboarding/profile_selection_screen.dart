@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/strings.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../core/widgets/koru_button.dart';
@@ -13,6 +14,7 @@ class ProfileSelectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedProfileProvider);
+    final s = ref.watch(stringsProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -22,17 +24,14 @@ class ProfileSelectionScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 48),
-              const Text('Kōru', style: KoruTextStyles.display),
+              Text(s.appTitle, style: KoruTextStyles.display),
               const SizedBox(height: 8),
-              const Text(
-                'Do you have a specific health\ncondition to track?',
-                style: KoruTextStyles.headline,
-              ),
+              Text(s.onboardingQuestion, style: KoruTextStyles.headline),
               const SizedBox(height: 32),
               _ProfileCard(
                 icon: '💚',
-                title: 'General Health',
-                description: 'Sleep, mood, stress, exercise & symptoms',
+                title: s.profileGeneralHealth,
+                description: s.profileGeneralHealthDesc,
                 profile: UserProfile.generalHealth,
                 isSelected: selected == UserProfile.generalHealth,
                 onTap: () => ref
@@ -42,8 +41,8 @@ class ProfileSelectionScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _ProfileCard(
                 icon: '🩸',
-                title: 'Diabetes',
-                description: 'Glucose, insulin, carbs + general health',
+                title: s.profileDiabetes,
+                description: s.profileDiabetesDesc,
                 profile: UserProfile.diabetes,
                 isSelected: selected == UserProfile.diabetes,
                 onTap: () => ref
@@ -53,8 +52,8 @@ class ProfileSelectionScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _ProfileCard(
                 icon: '❤️',
-                title: 'Hypertension',
-                description: 'Blood pressure, medication + general health',
+                title: s.profileHypertension,
+                description: s.profileHypertensionDesc,
                 profile: UserProfile.hypertension,
                 isSelected: selected == UserProfile.hypertension,
                 onTap: () => ref
@@ -63,7 +62,7 @@ class ProfileSelectionScreen extends ConsumerWidget {
               ),
               const Spacer(),
               KoruButton(
-                label: 'Continue',
+                label: s.continueBtn,
                 icon: Icons.arrow_forward,
                 onPressed: selected == null
                     ? null
