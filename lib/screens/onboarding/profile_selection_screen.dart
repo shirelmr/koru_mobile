@@ -49,17 +49,6 @@ class ProfileSelectionScreen extends ConsumerWidget {
                     .read(selectedProfileProvider.notifier)
                     .state = UserProfile.diabetes,
               ),
-              const SizedBox(height: 12),
-              _ProfileCard(
-                icon: '❤️',
-                title: s.profileHypertension,
-                description: s.profileHypertensionDesc,
-                profile: UserProfile.hypertension,
-                isSelected: selected == UserProfile.hypertension,
-                onTap: () => ref
-                    .read(selectedProfileProvider.notifier)
-                    .state = UserProfile.hypertension,
-              ),
               const Spacer(),
               KoruButton(
                 label: s.continueBtn,

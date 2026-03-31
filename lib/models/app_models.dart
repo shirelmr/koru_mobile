@@ -1,4 +1,4 @@
-enum UserProfile { generalHealth, diabetes, hypertension }
+enum UserProfile { generalHealth, diabetes }
 
 enum MoodCategory { good, neutral, bad }
 

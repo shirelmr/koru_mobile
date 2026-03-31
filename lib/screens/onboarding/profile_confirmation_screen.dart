@@ -19,51 +19,61 @@ class ProfileConfirmationScreen extends ConsumerWidget {
 
     final (emoji, title, items) = switch (selected) {
       UserProfile.diabetes => ('🩸', s.profileDiabetes, s.trackingItemsDiabetes),
-      UserProfile.hypertension => ('❤️', s.profileHypertension, s.trackingItemsHypertension),
       UserProfile.generalHealth => ('💚', s.profileGeneralHealth, s.trackingItemsGeneral),
     };
 
     return Scaffold(
+      backgroundColor: KoruColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 48),
-              Text('$emoji $title', style: KoruTextStyles.headline),
-              const SizedBox(height: 8),
-              Text(s.confirmTitle, style: KoruTextStyles.bodyMuted),
-              const SizedBox(height: 24),
-              ...items.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: KoruColors.sage,
-                          shape: BoxShape.circle,
+                      const SizedBox(height: 48),
+                      Text(emoji, style: const TextStyle(fontSize: 48)),
+                      const SizedBox(height: 12),
+                      Text(title, style: KoruTextStyles.display),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          '${s.confirmTitle} ${s.confirmFootnote}',
+                          textAlign: TextAlign.center,
+                          style: KoruTextStyles.bodyMuted,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Text(item, style: KoruTextStyles.body),
+                      const SizedBox(height: 32),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _es(s) ? 'Tu registro diario incluirá:' : 'Your daily check-in will include:',
+                              style: KoruTextStyles.title,
+                            ),
+                            const SizedBox(height: 16),
+                            ...items.map((item) => _TrackingItemPill(label: item)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: KoruColors.chip,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(s.confirmFootnote, style: KoruTextStyles.bodyMuted),
-              ),
-              const Spacer(),
               KoruButton(
                 label: s.startJournaling,
                 icon: Icons.arrow_forward,
@@ -72,20 +82,48 @@ class ProfileConfirmationScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 12),
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => context.go('/onboarding/select'),
-                  icon: const Icon(Icons.arrow_back, size: 16),
-                  label: Text(s.goBack),
-                  style: TextButton.styleFrom(
-                    foregroundColor: KoruColors.muted,
-                  ),
-                ),
+              KoruButton(
+                label: s.goBack,
+                outline: true,
+                onPressed: () => context.go('/onboarding/select'),
               ),
               const SizedBox(height: 24),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  bool _es(S s) => s.isSpanish;
+}
+
+class _TrackingItemPill extends StatelessWidget {
+  final String label;
+
+  const _TrackingItemPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: KoruColors.background.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.diamond, size: 12, color: KoruColors.dark),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: KoruTextStyles.body.copyWith(fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
