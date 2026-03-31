@@ -2,13 +2,10 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../core/strings.dart';
 import '../core/theme/colors.dart';
 import '../core/theme/text_styles.dart';
-import '../core/widgets/koru_button.dart';
-import '../core/widgets/dot_selector.dart';
-import '../models/app_models.dart';
 import '../providers/app_provider.dart';
 
 class CheckInScreen extends ConsumerStatefulWidget {
@@ -20,12 +17,10 @@ class CheckInScreen extends ConsumerStatefulWidget {
 
 class _CheckInScreenState extends ConsumerState<CheckInScreen>
     with TickerProviderStateMixin {
-  final _textController = TextEditingController();
   bool _isRecording = false;
   int _recordSeconds = 0;
   Timer? _recordTimer;
   late AnimationController _waveController;
-  bool _isAnalyzing = false;
 
   @override
   void initState() {
@@ -38,24 +33,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
 
   @override
   void dispose() {
-    _textController.dispose();
     _recordTimer?.cancel();
     _waveController.dispose();
     super.dispose();
   }
 
-  void _toggleRecording(S s) {
+  void _toggleRecording() {
     if (_isRecording) {
       setState(() => _isRecording = false);
       _recordTimer?.cancel();
       _waveController.stop();
-      final demo = s.isSpanish
-          ? 'Me desperté con dolor de cabeza, dormí 5 horas, tomé dos cafés esta mañana.'
-          : 'Woke up with a headache, slept 5 hours, had two coffees this morning.';
-      _textController.text = demo;
-      ref.read(appProvider.notifier).updateDraft(
-            ref.read(appProvider).draft.copyWith(text: _textController.text),
-          );
     } else {
       setState(() {
         _isRecording = true;
@@ -64,89 +51,61 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
       _waveController.repeat();
       _recordTimer = Timer.periodic(const Duration(seconds: 1), (t) {
         setState(() => _recordSeconds++);
-        if (_recordSeconds >= 30) _toggleRecording(s);
       });
-    }
-  }
-
-  Future<void> _analyze() async {
-    if (_textController.text.trim().isEmpty) return;
-    ref.read(appProvider.notifier).updateDraft(
-          ref.read(appProvider).draft.copyWith(text: _textController.text),
-        );
-    setState(() => _isAnalyzing = true);
-    await Future.delayed(const Duration(milliseconds: 2200));
-    ref.read(appProvider.notifier).extractFromDraft();
-    if (mounted) {
-      setState(() => _isAnalyzing = false);
-      context.go('/check-in/extraction');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appProvider);
-    final draft = state.draft;
-    final isdia = state.profile == UserProfile.diabetes;
     final s = ref.watch(stringsProvider);
+    final dateStr = DateFormat('EEEE, MMMM d').format(DateTime.now()).toUpperCase();
 
     return Scaffold(
+      backgroundColor: KoruColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 16),
-                  _Header(streak: state.streak, s: s),
-                  const SizedBox(height: 20),
-                  _VoiceCard(
-                    isRecording: _isRecording,
-                    seconds: _recordSeconds,
-                    waveController: _waveController,
-                    onToggle: () => _toggleRecording(s),
-                    s: s,
-                  ),
-                  const SizedBox(height: 16),
-                  _FreeTextField(
-                    controller: _textController,
-                    onMic: () => _toggleRecording(s),
-                    onChanged: (v) => ref
-                        .read(appProvider.notifier)
-                        .updateDraft(draft.copyWith(text: v)),
-                    s: s,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(s.optionalSliders.toUpperCase(), style: KoruTextStyles.label),
-                  const SizedBox(height: 12),
-                  _SlidersCard(
-                    draft: draft,
-                    onChanged: (d) => ref.read(appProvider.notifier).updateDraft(d),
-                    s: s,
-                  ),
-                  if (isdia) ...[
-                    const SizedBox(height: 24),
-                    Text(s.diabetesFields.toUpperCase(), style: KoruTextStyles.label),
-                    const SizedBox(height: 12),
-                    _DiabetesCard(
-                      draft: draft,
-                      onChanged: (d) => ref.read(appProvider.notifier).updateDraft(d),
-                      s: s,
-                    ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                _Header(streak: state.streak, s: s),
+                const SizedBox(height: 32),
+                Text(
+                  s.isSpanish ? '¿Cómo estás hoy?' : 'How are you today?',
+                  style: KoruTextStyles.display.copyWith(fontStyle: FontStyle.normal),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  dateStr,
+                  style: KoruTextStyles.label.copyWith(letterSpacing: 1.5),
+                ),
+                const SizedBox(height: 48),
+                _BigMicButton(
+                  isRecording: _isRecording,
+                  seconds: _recordSeconds,
+                  waveController: _waveController,
+                  onTap: _toggleRecording,
+                  s: s,
+                ),
+                const SizedBox(height: 48),
+                const _WeeklyStreak(),
+                const SizedBox(height: 32),
+                const Row(
+                  children: [
+                    Expanded(child: _StatusCard(label: 'SLEEP', value: '7h 20m', color: KoruColors.mid)),
+                    SizedBox(width: 12),
+                    Expanded(child: _StatusCard(label: 'WATER', value: '1.2L', color: KoruColors.mid)),
+                    SizedBox(width: 12),
+                    Expanded(child: _StatusCard(label: 'EXERCISE', value: '---', color: KoruColors.danger, isAlert: true)),
                   ],
-                  const SizedBox(height: 32),
-                  KoruButton(
-                    label: s.analyzeBtn,
-                    icon: Icons.auto_awesome,
-                    loading: _isAnalyzing,
-                    onPressed: _textController.text.trim().isEmpty ? null : _analyze,
-                  ),
-                  const SizedBox(height: 32),
-                ]),
-              ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -164,16 +123,26 @@ class _Header extends StatelessWidget {
       children: [
         Text(s.appTitle, style: KoruTextStyles.headline),
         const SizedBox(width: 8),
-        Text('· ${s.checkIn}', style: KoruTextStyles.body.copyWith(color: KoruColors.muted)),
+        Text('Check-In', style: KoruTextStyles.bodyMuted),
         const Spacer(),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: KoruColors.dark, borderRadius: BorderRadius.circular(20)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: KoruColors.chip.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Row(
             children: [
-              Container(width: 7, height: 7, decoration: const BoxDecoration(color: KoruColors.sage, shape: BoxShape.circle)),
-              const SizedBox(width: 6),
-              Text(s.dayStreak(streak), style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(color: KoruColors.mid, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                s.dayStreak(streak),
+                style: KoruTextStyles.label.copyWith(color: KoruColors.dark),
+              ),
             ],
           ),
         ),
@@ -182,55 +151,139 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _VoiceCard extends StatelessWidget {
+class _BigMicButton extends StatelessWidget {
   final bool isRecording;
   final int seconds;
   final AnimationController waveController;
-  final VoidCallback onToggle;
+  final VoidCallback onTap;
   final S s;
 
-  const _VoiceCard({required this.isRecording, required this.seconds, required this.waveController, required this.onToggle, required this.s});
+  const _BigMicButton({
+    required this.isRecording,
+    required this.seconds,
+    required this.waveController,
+    required this.onTap,
+    required this.s,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: KoruColors.dark, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          Row(
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              const Icon(Icons.auto_awesome, color: KoruColors.sage, size: 16),
-              const SizedBox(width: 6),
-              Text(s.voiceCardLabel, style: KoruTextStyles.label.copyWith(color: KoruColors.sage, letterSpacing: 0.8)),
+              if (isRecording) ...[
+                _Ripple(delay: 0, controller: waveController),
+                _Ripple(delay: 0.3, controller: waveController),
+                _Ripple(delay: 0.6, controller: waveController),
+              ],
+              Container(
+                width: 180,
+                height: 180,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: KoruColors.mid,
+                ),
+                child: Center(
+                  child: isRecording
+                      ? _WaveformWidget(controller: waveController)
+                      : CustomPaint(
+                          size: const Size(80, 80),
+                          painter: _KoruLogoPainter(),
+                        ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: onToggle,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isRecording ? KoruColors.danger : KoruColors.sage,
-                boxShadow: isRecording ? [BoxShadow(color: KoruColors.danger.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 4)] : null,
+        ),
+        const SizedBox(height: 24),
+        if (isRecording)
+          Column(
+            children: [
+              Text(
+                s.isSpanish ? 'Escuchando...' : 'Listening...',
+                style: KoruTextStyles.title.copyWith(fontStyle: FontStyle.italic),
               ),
-              child: Icon(isRecording ? Icons.stop : Icons.mic, color: Colors.white, size: 30),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(width: 8, height: 8, decoration: const BoxDecoration(color: KoruColors.danger, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '0:${seconds.toString().padLeft(2, '0')}',
+                    style: KoruTextStyles.title.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              IconButton.filled(
+                onPressed: onTap,
+                icon: const Icon(Icons.pause, size: 28),
+                style: IconButton.styleFrom(
+                  backgroundColor: KoruColors.mid,
+                  padding: const EdgeInsets.all(16),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                s.isSpanish ? 'TEMAS A SEGUIR' : 'TOPICS TO FOLLOW',
+                style: KoruTextStyles.label,
+              ),
+              const SizedBox(height: 12),
+              const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _TopicChip(label: 'Sueño', completed: true),
+                  _TopicChip(label: 'Sueño', completed: true),
+                  _TopicChip(label: 'Sueño', completed: false),
+                  _TopicChip(label: 'Sueño', completed: false),
+                  _TopicChip(label: 'Sueño', completed: true),
+                  _TopicChip(label: 'Sueño', completed: false),
+                  _TopicChip(label: 'Sueño', completed: false),
+                  _TopicChip(label: 'Sueño', completed: false),
+                ],
+              ),
+            ],
+          )
+        else
+          Text(
+            s.isSpanish ? 'Toca para hablar' : 'Push to talk',
+            style: KoruTextStyles.title.copyWith(fontStyle: FontStyle.italic),
+          ),
+      ],
+    );
+  }
+}
+
+class _Ripple extends StatelessWidget {
+  final double delay;
+  final AnimationController controller;
+  const _Ripple({required this.delay, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        double val = (controller.value + delay) % 1.0;
+        return Container(
+          width: 180 + (val * 100),
+          height: 180 + (val * 100),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: KoruColors.mid.withValues(alpha: 1.0 - val),
+              width: 1,
             ),
           ),
-          const SizedBox(height: 16),
-          if (isRecording)
-            Column(children: [
-              _WaveformWidget(controller: waveController),
-              const SizedBox(height: 8),
-              Text(s.listeningTimer(seconds), style: const TextStyle(color: Colors.white54, fontSize: 13)),
-            ])
-          else
-            Text(s.tapToRecord, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -246,14 +299,14 @@ class _WaveformWidget extends StatelessWidget {
       builder: (context, _) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(20, (i) {
+          children: List.generate(15, (i) {
             final phase = (controller.value * 2 * pi) + (i * 0.4);
-            final height = 4.0 + 12.0 * ((sin(phase) + 1) / 2);
+            final height = 10.0 + 30.0 * ((sin(phase) + 1) / 2);
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 2),
               width: 3,
               height: height,
-              decoration: BoxDecoration(color: KoruColors.sage.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(2)),
             );
           }),
         );
@@ -262,131 +315,109 @@ class _WaveformWidget extends StatelessWidget {
   }
 }
 
-class _FreeTextField extends StatefulWidget {
-  final TextEditingController controller;
-  final VoidCallback onMic;
-  final ValueChanged<String> onChanged;
-  final S s;
+class _KoruLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
 
-  const _FreeTextField({required this.controller, required this.onMic, required this.onChanged, required this.s});
+    final path = Path();
+    // Simplified spiral/koru shape
+    path.moveTo(size.width * 0.5, size.height * 0.8);
+    path.quadraticBezierTo(size.width * 0.1, size.height * 0.7, size.width * 0.3, size.height * 0.3);
+    path.quadraticBezierTo(size.width * 0.5, size.height * 0.05, size.width * 0.8, size.height * 0.4);
+    path.quadraticBezierTo(size.width * 0.9, size.height * 0.7, size.width * 0.6, size.height * 0.8);
+    path.quadraticBezierTo(size.width * 0.4, size.height * 0.85, size.width * 0.45, size.height * 0.6);
+    
+    canvas.drawPath(path, paint);
+    canvas.drawCircle(Offset(size.width * 0.53, size.height * 0.55), 2, paint..style = PaintingStyle.fill);
+  }
 
   @override
-  State<_FreeTextField> createState() => _FreeTextFieldState();
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _FreeTextFieldState extends State<_FreeTextField> {
+class _WeeklyStreak extends StatelessWidget {
+  const _WeeklyStreak();
+
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: widget.controller,
-      minLines: 4,
-      maxLines: 8,
-      onChanged: widget.onChanged,
-      decoration: InputDecoration(
-        hintText: '${widget.s.freeTextHint}\n\n${widget.s.freeTextPlaceholder}',
-        hintStyle: KoruTextStyles.bodyMuted,
-        suffixIcon: Padding(
-          padding: const EdgeInsets.only(right: 8, bottom: 60),
-          child: IconButton(icon: const Icon(Icons.mic_none, color: KoruColors.muted), onPressed: widget.onMic),
-        ),
-        alignLabelWithHint: true,
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _DayIndicator(label: 'L', active: true),
+        _DayIndicator(label: 'M', active: true),
+        _DayIndicator(label: 'M', active: true, isCurrent: true),
+        _DayIndicator(label: 'J', active: false),
+        _DayIndicator(label: 'V', active: false),
+      ],
     );
   }
 }
 
-class _SlidersCard extends StatelessWidget {
-  final CheckInDraft draft;
-  final ValueChanged<CheckInDraft> onChanged;
-  final S s;
+class _DayIndicator extends StatelessWidget {
+  final String label;
+  final bool active;
+  final bool isCurrent;
 
-  const _SlidersCard({required this.draft, required this.onChanged, required this.s});
+  const _DayIndicator({required this.label, required this.active, this.isCurrent = false});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: KoruColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: KoruColors.border, width: 0.5)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         children: [
-          DotSelector(label: s.sleepQuality, value: draft.sleepQuality, onChanged: (v) => onChanged(draft.copyWith(sleepQuality: v))),
-          const Divider(height: 20, color: KoruColors.border),
-          DotSelector(label: s.stressLevel, value: draft.stressLevel, onChanged: (v) => onChanged(draft.copyWith(stressLevel: v))),
-          const Divider(height: 20, color: KoruColors.border),
-          DotSelector(label: s.tension, value: draft.tension, onChanged: (v) => onChanged(draft.copyWith(tension: v))),
-          const Divider(height: 20, color: KoruColors.border),
-          DotSelector(label: s.mood, value: draft.mood, onChanged: (v) => onChanged(draft.copyWith(mood: v))),
-          const Divider(height: 20, color: KoruColors.border),
-          DotSelector(label: s.focus, value: draft.focus, onChanged: (v) => onChanged(draft.copyWith(focus: v))),
+          Container(
+            width: 32,
+            height: isCurrent ? 32 : 6,
+            decoration: BoxDecoration(
+              color: isCurrent ? Colors.transparent : (active ? KoruColors.mid : KoruColors.border),
+              borderRadius: BorderRadius.circular(10),
+              border: isCurrent ? Border.all(color: KoruColors.mid, width: 4) : null,
+            ),
+            child: isCurrent ? Center(child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: KoruColors.dark))) : null,
+          ),
+          if (!isCurrent) ...[
+            const SizedBox(height: 8),
+            Text(label, style: KoruTextStyles.label.copyWith(color: active ? KoruColors.dark : KoruColors.muted)),
+          ],
         ],
       ),
     );
   }
 }
 
-class _DiabetesCard extends StatelessWidget {
-  final CheckInDraft draft;
-  final ValueChanged<CheckInDraft> onChanged;
-  final S s;
+class _StatusCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool isAlert;
 
-  const _DiabetesCard({required this.draft, required this.onChanged, required this.s});
+  const _StatusCard({required this.label, required this.value, required this.color, this.isAlert = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: KoruColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: KoruColors.border, width: 0.5)),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: KoruColors.border, width: 0.5),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text('🩸', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 10),
-              Expanded(child: Text(s.glucoseLabel, style: KoruTextStyles.body)),
-              SizedBox(
-                width: 80,
-                height: 38,
-                child: TextField(
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(hintText: '---', contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8)),
-                  onChanged: (v) => onChanged(draft.copyWith(glucose: double.tryParse(v))),
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 20, color: KoruColors.border),
-          Row(
-            children: [
-              const Text('💉', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 10),
-              Expanded(child: Text(s.insulinTaken, style: KoruTextStyles.body)),
-              Switch(value: draft.insulinTaken, onChanged: (v) => onChanged(draft.copyWith(insulinTaken: v)), activeTrackColor: KoruColors.mid),
-            ],
-          ),
-          const Divider(height: 20, color: KoruColors.border),
-          Row(children: [const Text('🥗', style: TextStyle(fontSize: 20)), const SizedBox(width: 10), Text(s.carbIntakeLabel, style: KoruTextStyles.body)]),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _SelectChip(label: s.carbLow, selected: draft.carbIntake == CarbIntake.low, onTap: () => onChanged(draft.copyWith(carbIntake: CarbIntake.low))))),
-              Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _SelectChip(label: s.carbMedium, selected: draft.carbIntake == CarbIntake.medium, onTap: () => onChanged(draft.copyWith(carbIntake: CarbIntake.medium))))),
-              Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _SelectChip(label: s.carbHigh, selected: draft.carbIntake == CarbIntake.high, onTap: () => onChanged(draft.copyWith(carbIntake: CarbIntake.high))))),
-            ],
-          ),
-          const Divider(height: 20, color: KoruColors.border),
-          Row(children: [const Text('🍽', style: TextStyle(fontSize: 20)), const SizedBox(width: 10), Text(s.lastMealLabel, style: KoruTextStyles.body)]),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _SelectChip(label: s.mealBreakfast, selected: draft.lastMeal == MealType.breakfast, onTap: () => onChanged(draft.copyWith(lastMeal: MealType.breakfast))),
-              _SelectChip(label: s.mealLunch, selected: draft.lastMeal == MealType.lunch, onTap: () => onChanged(draft.copyWith(lastMeal: MealType.lunch))),
-              _SelectChip(label: s.mealDinner, selected: draft.lastMeal == MealType.dinner, onTap: () => onChanged(draft.copyWith(lastMeal: MealType.dinner))),
-              _SelectChip(label: s.mealSnack, selected: draft.lastMeal == MealType.snack, onTap: () => onChanged(draft.copyWith(lastMeal: MealType.snack))),
-            ],
+          Text(label, style: const TextStyle(fontFamily: 'Georgia', fontSize: 10, color: KoruColors.muted)),
+          const SizedBox(height: 4),
+          Text(value, style: KoruTextStyles.title.copyWith(fontSize: 14)),
+          const SizedBox(height: 8),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
         ],
       ),
@@ -394,26 +425,28 @@ class _DiabetesCard extends StatelessWidget {
   }
 }
 
-class _SelectChip extends StatelessWidget {
+class _TopicChip extends StatelessWidget {
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final bool completed;
 
-  const _SelectChip({required this.label, required this.selected, required this.onTap});
+  const _TopicChip({required this.label, required this.completed});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? KoruColors.dark : KoruColors.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? KoruColors.dark : KoruColors.border, width: 0.5),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: completed ? KoruColors.mid.withValues(alpha: 0.2) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: KoruColors.border, width: 0.5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: KoruColors.dark,
+          decoration: completed ? TextDecoration.lineThrough : null,
         ),
-        child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: selected ? Colors.white : KoruColors.dark)),
       ),
     );
   }

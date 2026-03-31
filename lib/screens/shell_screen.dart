@@ -14,37 +14,44 @@ class ShellScreen extends ConsumerWidget {
     final s = ref.watch(stringsProvider);
 
     return Scaffold(
+      backgroundColor: KoruColors.background,
       body: shell,
       bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: const BoxDecoration(
-          color: KoruColors.dark,
-          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+          color: KoruColors.background,
         ),
         child: SafeArea(
-          child: SizedBox(
-            height: 60,
-            child: Row(
-              children: [
-                _NavItem(
-                  icon: Icons.radio_button_checked_rounded,
-                  label: s.navCheckIn,
-                  selected: shell.currentIndex == 0,
-                  onTap: () => shell.goBranch(0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Divider(height: 1, color: KoruColors.border),
+              SizedBox(
+                height: 80,
+                child: Row(
+                  children: [
+                    _NavItem(
+                      icon: Icons.radio_button_checked_rounded,
+                      label: s.navCheckIn,
+                      selected: shell.currentIndex == 0,
+                      onTap: () => shell.goBranch(0),
+                    ),
+                    _NavItem(
+                      icon: Icons.show_chart_rounded,
+                      label: s.navTimeline,
+                      selected: shell.currentIndex == 1,
+                      onTap: () => shell.goBranch(1),
+                    ),
+                    _NavItem(
+                      icon: Icons.add_box_outlined,
+                      label: s.navPatterns,
+                      selected: shell.currentIndex == 2,
+                      onTap: () => shell.goBranch(2),
+                    ),
+                  ],
                 ),
-                _NavItem(
-                  icon: Icons.show_chart_rounded,
-                  label: s.navTimeline,
-                  selected: shell.currentIndex == 1,
-                  onTap: () => shell.goBranch(1),
-                ),
-                _NavItem(
-                  icon: Icons.grid_view_rounded,
-                  label: s.navPatterns,
-                  selected: shell.currentIndex == 2,
-                  onTap: () => shell.goBranch(2),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -76,16 +83,17 @@ class _NavItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 22,
-              color: selected ? Colors.white : KoruColors.sage,
+              size: 24,
+              color: selected ? KoruColors.dark : KoruColors.muted.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? Colors.white : KoruColors.sage,
+                fontSize: 10,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w400,
+                color: selected ? KoruColors.dark : KoruColors.muted.withValues(alpha: 0.5),
+                letterSpacing: 0.5,
               ),
             ),
           ],
