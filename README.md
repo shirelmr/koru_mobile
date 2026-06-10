@@ -1,4 +1,4 @@
-# flutter_mobile
+# Koru but now in mobile
 
 A new Flutter project.
 
